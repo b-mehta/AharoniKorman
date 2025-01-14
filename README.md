@@ -10,6 +10,16 @@ The [conjecture](https://link.springer.com/article/10.1007/BF00383948) states th
 
 In November 2024, Lawrence Hollom [disproved this conjecture](https://arxiv.org/abs/2411.16844).
 
+The statement which has been formally proved can be found at the bottom of `AharoniKorman/Counterexample.lean`, and reads as follows:
+```
+theorem aharoni_korman_false :
+    ¬ ∀ (α : Type) (_ : PartialOrder α),
+        (∃ A : Set α, IsAntichain (· ≤ ·) A ∧ A.Infinite) ∨
+        (∃ C : Set α, IsChain (· ≤ ·) C ∧
+         ∃ S : Set (Set α), Setoid.IsPartition S ∧
+          ∀ A ∈ S, IsAntichain (· ≤ ·) A ∧ (A ∩ C).Nonempty)
+```
+
 ## Build the Lean files
 
 To build the Lean files of this project, you need to have a working version of Lean.
