@@ -70,8 +70,6 @@ aim of reaching a contradiction (as then, no such partition can exist). We may f
   we have a contradiction (`no_spinalMap`), and therefore show that no spinal map exists.
 -/
 
--- attribute [aesop norm 10 tactic] Lean.Elab.Tactic.Omega.omegaDefault
-attribute [aesop 2 simp] Set.subset_def Finset.subset_iff
 attribute [grind] Prod.mk_lt_mk Prod.mk_le_mk Finset.coe_Icc Finset.coe_image
   Finset.mem_Ico Finset.mem_Icc OrderEmbedding.lt_iff_lt
 
@@ -138,29 +136,20 @@ instance : PartialOrder Hollom where
   le_trans := «forall₃».2 <| by grind [HollomOrder]
   le_antisymm := «forall₂».2 <| by grind [HollomOrder]
 
+lemma le_iff {x y : ℕ × ℕ × ℕ} : toHollom x ≤ toHollom y ↔ HollomOrder x y := Iff.rfl
+
 @[simp, grind] lemma toHollom_le_toHollom_iff_fixed_right {a b c d n : ℕ} :
     h(a, b, n) ≤ h(c, d, n) ↔ a ≤ c ∧ b ≤ d := by
-  refine ⟨?_, ?_⟩
-  · rintro (_ | _)
-    · omega
-    · omega
-  · rintro ⟨h₁, h₂⟩
-    exact .within h₁ h₂
+  grind [le_iff, HollomOrder]
 
 @[grind] lemma le_of_toHollom_le_toHollom {a b c d e f : ℕ} :
-    h(a, b, c) ≤ h(d, e, f) → f ≤ c
-  | .twice _ => by omega
-  | .within _ _ => by omega
-  | .next_add _ => by omega
-  | .next_min _ => by omega
+    h(a, b, c) ≤ h(d, e, f) → f ≤ c := by
+  grind [le_iff, HollomOrder]
 
 @[grind] lemma toHollom_le_toHollom {a b c d e f : ℕ} (h : (a, b) ≤ (d, e)) (hcf : f ≤ c) :
     h(a, b, c) ≤ h(d, e, f) := by
-  simp only [Prod.mk_le_mk] at h
-  obtain rfl | rfl | hc : f = c ∨ f + 1 = c ∨ f + 2 ≤ c := by omega
-  · simpa using h
-  · exact .next_add (by omega)
-  · exact .twice hc
+  have hc : f = c ∨ f + 1 = c ∨ f + 2 ≤ c := by omega
+  grind [le_iff, HollomOrder]
 
 /--
 The Hollom partial order is divided into "levels", indexed by the natural numbers. These correspond
@@ -179,11 +168,11 @@ lemma level_eq (n : ℕ) : level n = {x | (ofHollom x).2.2 = n} := by
 lemma induction_on_level {n : ℕ} {p : (x : Hollom) → x ∈ level n → Prop}
     (h : ∀ x y, p h(x, y, n) (by simp)) :
     ∀ {x : Hollom}, (h : x ∈ level n) → p x h := by
-  grind [cases Hollom]
+  grind [Hollom]
 
 lemma forall_mem_level {n : ℕ} {p : Hollom → Prop} :
     (∀ x ∈ level n, p x) ↔ (∀ x y, p (h(x, y, n))) := by
-  grind [cases Hollom]
+  grind [Hollom]
 
 /--
 For each `n`, there is an order embedding from ℕ × ℕ (which has the product order) to the Hollom
@@ -197,8 +186,6 @@ def embed (n : ℕ) : ℕ × ℕ ↪o Hollom where
 @[grind _=_] lemma embed_apply (n : ℕ) (x y : ℕ) : embed n (x, y) = h(x, y, n) := rfl
 
 lemma embed_strictMono {n : ℕ} : StrictMono (embed n) := (embed n).strictMono
-
--- lemma embed_mem_level {n : ℕ} {x : ℕ × ℕ} : embed n x ∈ level n := by simp [embed]
 
 lemma level_eq_range (n : ℕ) : level n = Set.range (embed n) := by
   simp [level, Set.range, embed]
@@ -225,7 +212,7 @@ This corresponds to 5.8 (i) in the paper.
 -/
 lemma ordConnected_level {n : ℕ} : (level n).OrdConnected := by
   rw [Set.ordConnected_iff]
-  grind [cases Hollom]
+  grind [Hollom]
 
 /-- The map from `(x, y, n)` to `x + y`. -/
 @[pp_nodot] def line (x : Hollom) : ℕ := (ofHollom x).1 + (ofHollom x).2.1
@@ -241,18 +228,10 @@ lemma line_injOn {C : Set Hollom} (n : ℕ) (hC : IsChain (· ≤ ·) C) (hCn : 
   have := hC.total hx hy
   grind
 
-lemma add_lt_add_of_lt {a b c d n : ℕ} (h : h(a, b, n) < h(c, d, n)) : a + b < c + d := by
-  grind
-
 lemma line_mapsTo {x y : Hollom} (hxy : (ofHollom x).2.2 = (ofHollom y).2.2) :
     Set.MapsTo line (Set.Icc x y) (Set.Icc (line x) (line y)) := by
   induction x with | h a b c =>
-  induction y with | h d e f =>
-  obtain rfl : c = f := by simpa using hxy
-  rw [Set.mapsTo_iff_image_subset]
-  intro n
-  simp only [Set.mem_image, Hollom.exists]
-  grind
+  grind [Set.mapsTo_iff_image_subset, Hollom]
 
 @[grind =] lemma embed_image_Icc {a b c d n : ℕ} :
     embed n '' Set.Icc (a, b) (c, d) = Set.Icc h(a, b, n) h(c, d, n) := by
@@ -298,7 +277,7 @@ theorem scattered {f : ℚ → Hollom} (hf : StrictMono f) : False := by
   -- Now `f '' [x, y]` is infinite, as it is the image of an infinite set of rationals,
   have h₁ : (f '' Set.Icc x y).Infinite := (Set.Icc_infinite hxy).image hf.injective.injOn
   -- but it is contained in `[f x, f y]` by monotonicity
-  have h₂ : f '' Set.Icc x y ⊆ Set.Icc (f x) (f y) := Monotone.image_Icc_subset hf.monotone
+  have h₂ : f '' Set.Icc x y ⊆ Set.Icc (f x) (f y) := hf.monotone.image_Icc_subset
   -- and this is finite, as it is a closed interval in `level (g x)`
   have h₃ : (Set.Icc (f x) (f y)).Finite := by
     set n := g y
@@ -378,7 +357,7 @@ theorem exists_finite_intersection (hC : IsChain (· ≤ ·) C) :
     have : (C ∩ level (n + 1) ∩ D).Finite := by
       -- (indeed, `level (n + 1) ∩ D` is finite)
       refine .subset (.image (embed (n + 1)) (triangle_finite (2 * (u + v)))) ?_
-      grind [cases Hollom]
+      grind [Hollom]
     -- ...and `C ∩ level (n + 1)` is infinite (by assumption).
     specialize hC' (n + 1) (by omega)
     rw [← (C ∩ level (n + 1)).inter_union_diff D, Set.infinite_union] at hC'
@@ -422,7 +401,7 @@ structure SpinalMap (C : Set α) where
 
 instance : FunLike (SpinalMap C) α α where
   coe := SpinalMap.toFun
-  coe_injective' | ⟨f, _, _, _⟩, ⟨g, _, _, _⟩, h => by simp_all only
+  coe_injective' | ⟨f, _, _, _⟩, ⟨g, _, _, _⟩ => by grind
 
 /-! ### Basic lemmas for spinal maps -/
 namespace SpinalMap
@@ -537,12 +516,7 @@ def chainBetween (a b c d : ℕ) : Finset (ℕ × ℕ) :=
     else ∅
 
 lemma chainBetween_isChain {a b c d : ℕ} : IsChain (· ≤ ·) (chainBetween a b c d).toSet := by
-  rw [chainBetween]
-  split_ifs
-  · rintro ⟨v, w⟩ hvw ⟨x, y⟩ hxy
-    simp_all
-    omega
-  · simp
+  grind [chainBetween, IsChain, Set.Pairwise]
 
 lemma image_chainBetween_isChain {a b c d n : ℕ} :
     IsChain (· ≤ ·) ((chainBetween a b c d).image (embed n)).toSet := by
@@ -563,8 +537,7 @@ open Finset in
 
 @[grind] lemma chainBetween_subset {a b c d : ℕ} :
     chainBetween a b c d ⊆ Finset.Icc (a, b) (c, d) := by
-  rw [chainBetween]
-  grind
+  grind [chainBetween]
 
 end make_chains
 
@@ -592,15 +565,15 @@ lemma C_inter_Icc_large (f : SpinalMap C) {n : ℕ} {xl yl xh yh : ℕ}
   set int : Finset Hollom := (Icc (xl, yl) (xh, yh)).image (embed n)
   set I : Finset Hollom := {x ∈ int | x ∈ C}
   let D : Finset Hollom := (chainBetween xl yl xh yh).image (embed n)
-  have hD : D ⊆ int := Finset.image_subset_image chainBetween_subset
+  have hD : D ⊆ int := image_subset_image chainBetween_subset
   have D_maps : Set.MapsTo f D I := by
-    simp only [I, Finset.coe_filter]
+    simp only [I, coe_filter]
     exact ((mapsTo_Icc_image hC hlo hhi).mono_left hD).inter (by simp [Set.MapsTo])
   have f_inj : Set.InjOn f D := f.injOn_of_isChain image_chainBetween_isChain
   have : #D = xh + yh + 1 - (xl + yl) := by
     simp [D, card_image_of_injective _ (embed n).injective, card_chainBetween hx hy]
   rw [← this]
-  exact Finset.card_le_card_of_injOn f D_maps f_inj
+  exact card_le_card_of_injOn f D_maps f_inj
 
 open Classical Finset in
 /--
@@ -620,10 +593,9 @@ theorem card_C_inter_Icc_eq (f : SpinalMap C) {n : ℕ} {xl yl xh yh : ℕ}
   have hI : IsChain (· ≤ ·) I.toSet := hC.mono (by grind)
   have hIn : I.toSet ⊆ level n := by grind
   have : Set.MapsTo line int (Icc (xl + yl) (xh + yh)) := by grind [line_mapsTo]
-  replace this : Set.MapsTo line I (Icc (xl + yl) (xh + yh)) := this.mono_left (filter_subset _ _)
   refine le_antisymm ?_ (C_inter_Icc_large f hC hx hy hlo hhi)
   rw [← Nat.card_Icc]
-  exact card_le_card_of_injOn _ this (line_injOn _ hI hIn)
+  exact card_le_card_of_injOn _ (this.mono_left (filter_subset _ _)) (line_injOn _ hI hIn)
 
 open Finset in
 /--
@@ -671,9 +643,7 @@ lemma apply_eq_of_line_eq_step (f : SpinalMap C) {n xl yl xh yh : ℕ}
   -- and as `B` is a chain, `f` acts injectively on it.
   have f_inj : Set.InjOn f B := by
     refine f.injOn_of_isChain ?_
-    simp only [B, coe_image]
-    refine IsChain.image (· ≤ ·) _ (embed n) (by simp) ?_
-    grind [chainBetween, coe_union, isChain_union, chainBetween_isChain]
+    grind [image_union, coe_union, isChain_union, image_chainBetween_isChain]
   -- Thus the image of `B` under `f` is all of `I`, except for exactly one element.
   have card_eq : (I \ B.image f).card = 1 := by
     rw [card_sdiff, cI, card_image_of_injOn f_inj, cB]
