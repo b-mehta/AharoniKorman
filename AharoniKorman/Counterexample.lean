@@ -90,7 +90,7 @@ structure Hollom where
 
 open Hollom
 
-@[simp] lemma ofHollom_toHollom (x) : ofHollom (toHollom x) = x := rfl
+-- @[simp] lemma ofHollom_toHollom (x) : ofHollom (toHollom x) = x := rfl
 @[simp] lemma toHollom_ofHollom (x) : toHollom (ofHollom x) = x := rfl
 attribute [grind] Hollom.ext_iff
 
@@ -681,7 +681,7 @@ For two points of `C` in the same level, and two points `(a, b, n)` and `(c, d, 
 if `a + b = c + d` then `f (a, b, n) = f (c, d, n)`.
 -/
 theorem apply_eq_of_line_eq (f : SpinalMap C) {n : ℕ} (hC : IsChain (· ≤ ·) C)
-    {lo hi : Hollom} (hlo : lo ∈ C ∩ level n) (hhi : hi ∈ C ∩ level n) (hlohi : lo ≤ hi)
+    {lo hi : Hollom} (hlo : lo ∈ C ∩ level n) (hhi : hi ∈ C ∩ level n)
     {x y : Hollom} (h : line x = line y)
     (h₁l : lo ≤ x) (h₂l : lo ≤ y) (h₁h : x ≤ hi) (h₂h : y ≤ hi) :
     f x = f y := by
@@ -694,10 +694,7 @@ theorem apply_eq_of_line_eq (f : SpinalMap C) {n : ℕ} (hC : IsChain (· ≤ ·
   simp only at hxy
   simp only [line_toHollom] at h
   obtain ⟨k, rfl⟩ := exists_add_of_le hxy
-  obtain rfl : y₂ = y₁ + k := by omega
-  induction hlo.2 using induction_on_level with | h xlo ylo =>
-  induction hhi.2 using induction_on_level with | h xhi yhi =>
-  exact apply_eq_of_line_eq_aux f hC hlo.1 hhi.1 (by simp_all) (by simp_all) h₁l h₂l h₁h h₂h
+  grind [apply_eq_of_line_eq_aux, Hollom]
 
 /--
 Construction of the set `R`, which has the following key properties:
@@ -770,8 +767,7 @@ noncomputable def x0y0 (n : ℕ) (C : Set Hollom) : ℕ × ℕ :=
       exact ⟨y, h⟩
     else 0
 
-lemma x0y0_mem (h : (C ∩ level (n + 1)).Nonempty) :
-    embed (n + 1) (x0y0 n C) ∈ C := by
+lemma x0y0_mem (h : (C ∩ level (n + 1)).Nonempty) : embed (n + 1) (x0y0 n C) ∈ C := by
   rw [x0y0, dif_pos h]
   exact WellFounded.min_mem _ {x | embed (n + 1) x ∈ C} _
 
@@ -929,11 +925,10 @@ theorem not_S_hits_next (f : SpinalMap C) (hC : IsChain (· ≤ ·) C)
       -- Then we have `(a, b, n + 1) ≤ j`...
       have hj' : h(a, b, n + 1) ≤ j := by grind [cases Hollom, → IsChain.le_of_not_gt]
       -- ...and `(x0, y0, n + 1) ≤ j`.
-      have h0j : h(x0 n C, y0 n C, n + 1) ≤ j := hj'.trans' (by grind)
       have : line h(a, b, n + 1) = line h(x0 n C, a + b - x0 n C, n + 1) := by grind
       -- Then we have `f(a, b, n + 1) = f(x0, a + b - x0, n + 1)` since they are at the same line
       have : f h(a, b, n + 1) = f h(x0 n C, a + b - x0 n C, n + 1) := apply_eq_of_line_eq f hC
-        ⟨x0_y0_mem h.nonempty, by simp⟩ hjCn ‹_› this (x0_y0_min hC hp.1) (by simp; omega) hj' hj
+        ⟨x0_y0_mem h.nonempty, by simp⟩ hjCn this (x0_y0_min hC hp.1) (by simp; omega) hj' hj
       -- so `f(x, y, n) = (a, b, n + 1) = f(a, b, n + 1) = f(x0, a + b - x0, n + 1)`
       have : f h(x, y, n) = f h(x0 n C, a + b - x0 n C, n + 1) := by
         rw [← this, f.eq_self_of_mem hp.1, hfp]
@@ -943,10 +938,9 @@ theorem not_S_hits_next (f : SpinalMap C) (hC : IsChain (· ≤ ·) C)
     · obtain ⟨j, hjCn, hj⟩ := lbias (a + b - y0 n C)
       -- The left case is exactly symmetric
       have hj' : h(a, b, n + 1) ≤ j := by grind [cases Hollom, → IsChain.le_of_not_gt]
-      have h0j : h(x0 n C, y0 n C, n + 1) ≤ j := hj'.trans' (by grind)
       have : line h(a, b, n + 1) = line h(a + b - y0 n C, y0 n C, n + 1) := by grind
       have : f h(a, b, n + 1) = f h(a + b - y0 n C, y0 n C, n + 1) := apply_eq_of_line_eq f hC
-        ⟨x0_y0_mem h.nonempty, by simp⟩ hjCn ‹_› this (x0_y0_min hC hp.1) (by grind) hj' hj
+        ⟨x0_y0_mem h.nonempty, by simp⟩ hjCn this (x0_y0_min hC hp.1) (by grind) hj' hj
       have : f h(x, y, n) = f h(a + b - y0 n C, y0 n C, n + 1) := by
         rw [← this, f.eq_self_of_mem hp.1, hfp]
       exact f.not_le_of_eq this.symm (by simp) (.next_min (hx.2.trans' (by simp)))
@@ -1029,8 +1023,8 @@ theorem not_S_mapsTo_previous (hC : IsChain (· ≤ ·) C)
     have le : h(b, a, n) ≤ h(u, v, n - 1) := by
       match n, hn with
       | n + 1, _ =>
-          simp only [add_tsub_cancel_right]
-          apply HollomOrder.next_add (by omega)
+        simp only [add_tsub_cancel_right]
+        apply HollomOrder.next_add (by omega)
     have : f h(u, v, n - 1) = f h(b, a, n) := by rw [f.eq_self_of_mem hc'.1, hc]
     have := le_of_toHollom_le_toHollom (f.eq_of_le this.symm le).ge
     omega
@@ -1041,16 +1035,12 @@ theorem not_S_mapsTo_previous (hC : IsChain (· ≤ ·) C)
     rintro x ⟨_, hx⟩
     simpa using hx
   -- and it does so injectively, as `T` is a chain.
-  have line_inj : Set.InjOn line T :=
-    line_injOn (n - 1)
-      (hC.mono (by simp +contextual [Set.subset_def, T]))
-      (by simp +contextual [Set.subset_def, T])
+  have line_inj : Set.InjOn line T := line_injOn (n - 1) (hC.mono (by grind)) (by grind)
   -- Therefore `line ∘ f` sends `F` to `[0, 2a)` injectively
   have line_F_mapsTo : Set.MapsTo (line ∘ f) F (range (2 * a)) := line_mapsTo.comp F_mapsTo
   -- which is a contradiction by cardinality arguments.
   have := card_le_card_of_injOn _ line_F_mapsTo (line_inj.comp F_inj F_mapsTo)
-  simp only [Finset.card_range] at this
-  omega
+  grind [Finset.card_range]
 
 /-- The Hollom partial order has no spinal maps. -/
 theorem no_spinalMap (hC : IsChain (· ≤ ·) C) (f : SpinalMap C) : False := by
