@@ -9,6 +9,7 @@ import Mathlib.Algebra.Order.Field.Rat
 import Mathlib.Algebra.Order.Star.Basic
 import Mathlib.Data.Countable.Basic
 import Mathlib.Data.Setoid.Partition
+import Mathlib.Order.Comparable
 import Mathlib.Order.Filter.AtTopBot.Basic
 import Mathlib.Order.Interval.Set.Infinite
 import Mathlib.Order.WellFoundedSet
@@ -71,7 +72,7 @@ aim of reaching a contradiction (as then, no such partition can exist). We may f
 -/
 
 attribute [grind] Prod.mk_lt_mk Prod.mk_le_mk Finset.coe_Icc Finset.coe_image
-  Finset.mem_Ico Finset.mem_Icc OrderEmbedding.lt_iff_lt
+  Finset.mem_Ico Finset.mem_Icc OrderEmbedding.lt_iff_lt not_compRel_iff CompRel.refl CompRel.symm
 
 open Filter
 
@@ -396,7 +397,7 @@ structure SpinalMap (C : Set α) where
   /-- The underlying function of a spinal map. -/
   toFun : α → α
   mem' : ∀ x, toFun x ∈ C
-  eq_self_of_mem' : ∀ x ∈ C, toFun x = x
+  eq_self_of_mem' {x} : x ∈ C → toFun x = x
   fibre_antichain' : ∀ x, IsAntichain (· ≤ ·) (toFun ⁻¹' {x})
 
 instance : FunLike (SpinalMap C) α α where
@@ -411,13 +412,13 @@ variable (f : SpinalMap C)
 @[ext] lemma ext {f g : SpinalMap C} (h : ∀ x, f x = g x) : f = g := DFunLike.ext f g h
 @[simp] lemma toFun_eq_coe : f.toFun = f := rfl
 @[simp, grind] lemma mem (x : α) : f x ∈ C := f.mem' x
-lemma eq_self_of_mem {x : α} (hx : x ∈ C) : f x = x := f.eq_self_of_mem' x hx
+@[grind] lemma eq_self_of_mem {x : α} (hx : x ∈ C) : f x = x := f.eq_self_of_mem' hx
 lemma fibre_antichain (x : α) : IsAntichain (· ≤ ·) (f ⁻¹' {x}) := f.fibre_antichain' x
 lemma range_subset : Set.range f ⊆ C := by simp [Set.subset_def]
 
 variable {x y z : α}
 
-@[simp, grind] lemma idempotent (x : α) : f (f x) = f x := f.eq_self_of_mem (f.mem x)
+@[simp] lemma idempotent (x : α) : f (f x) = f x := f.eq_self_of_mem (f.mem x)
 
 lemma not_le_of_eq (hfxy : f x = f y) (hxy : x ≠ y) : ¬ x ≤ y :=
   f.fibre_antichain (f y) hfxy rfl hxy
@@ -430,8 +431,14 @@ lemma not_le_of_eq (hfxy : f x = f y) (hxy : x ≠ y) : ¬ x ≤ y :=
 lemma incomp_of_eq (hfxy : f x = f y) (hxy : x ≠ y) : ¬ (x ≤ y ∨ y ≤ x) :=
   not_or.2 ⟨f.not_le_of_eq hfxy hxy, f.not_le_of_eq hfxy.symm hxy.symm⟩
 
+lemma incompRel_of_eq (hfxy : f x = f y) (hxy : x ≠ y) : IncompRel (· ≤ ·) x y := by
+  grind [IncompRel]
+
 lemma incomp_apply (hx : f x ≠ x) : ¬ (f x ≤ x ∨ x ≤ f x) :=
   f.incomp_of_eq (f.idempotent x) hx
+
+@[grind] lemma incompRel_apply (hx : f x ≠ x) : IncompRel (· ≤ ·) (f x) x :=
+  f.incompRel_of_eq (f.idempotent x) hx
 
 lemma not_apply_lt : ¬ f x < x := f.not_lt_of_eq (by simp)
 lemma not_lt_apply : ¬ x < f x := f.not_lt_of_eq (by simp)
@@ -456,9 +463,9 @@ lemma mapsTo_Icc_self (hC : IsChain (· ≤ ·) C) (hy : y ∈ C) (hz : z ∈ C)
     Set.MapsTo f (Set.Icc y z) (Set.Icc y z) := fun _ ↦ apply_mem_Icc_of_mem_Icc _ hC hy hz
 
 lemma injOn_of_isChain {D : Set α} (hD : IsChain (· ≤ ·) D) : D.InjOn f := by
-  intro x hx y hy h
-  by_contra! h'
-  exact f.incomp_of_eq h h' (hD.total hx hy)
+  intro x hx y hy
+  have := hD.total hx hy
+  grind
 
 end SpinalMap
 
@@ -483,12 +490,10 @@ theorem exists_partition_iff_nonempty_spinalMap
     choose F hFS hFmem hFuniq using hS
     choose hA G hGA hGC using hSA
     let f (x : α) : α := G (F x) (hFS x)
-    have hfCid (x : α) (hx : x ∈ C) : f x = x :=
+    have hfCid {x : α} (hx : x ∈ C) : f x = x :=
       inter_subsingleton_of_isChain_of_isAntichain hC (hA (F x) (hFS _))
         ⟨hGC _ _, hGA _ _⟩ ⟨hx, hFmem _⟩
-    have hf (x : α) : IsAntichain (· ≤ ·) (f ⁻¹' {x}) := (hA (F x) (hFS _)).subset <| by
-      rintro y rfl
-      exact hFuniq (f y) (F y) (hFS y) (hGA _ _) ▸ hFmem _
+    have hf (x : α) : IsAntichain (· ≤ ·) (f ⁻¹' {x}) := (hA (F x) (hFS _)).subset <| by grind
     exact ⟨⟨f, fun _ ↦ hGC _ _, hfCid, hf⟩⟩
   · rintro ⟨f⟩
     refine ⟨_, (Setoid.ker f).isPartition_classes, ?_⟩
@@ -520,19 +525,15 @@ lemma chainBetween_isChain {a b c d : ℕ} : IsChain (· ≤ ·) (chainBetween a
 lemma image_chainBetween_isChain {a b c d n : ℕ} :
     IsChain (· ≤ ·) ((chainBetween a b c d).image (embed n)).toSet := by
   rw [coe_image]
-  apply chainBetween_isChain.image
-  simp
+  exact chainBetween_isChain.image _ _ _ (by simp)
 
-open Finset in
 @[grind =] lemma card_chainBetween {a b c d : ℕ} (hac : a ≤ c) (hbd : b ≤ d) :
     #(chainBetween a b c d) = c + d + 1 - (a + b) := by
   rw [chainBetween, if_pos ⟨hac, hbd⟩, card_union_of_disjoint, Finset.card_Icc_prod]
   · simp only [Icc_self, card_singleton, Nat.card_Icc]
     rw [← Finset.Ico_map_sectR, card_map, Nat.card_Ico]
     omega
-  · rw [disjoint_left]
-    simp
-    omega
+  · grind [disjoint_left]
 
 @[grind] lemma chainBetween_subset {a b c d : ℕ} :
     chainBetween a b c d ⊆ Finset.Icc (a, b) (c, d) := by
@@ -702,7 +703,8 @@ Construction of the set `R`, which has the following key properties:
 * Each of its elements is comparable to all of `C ∩ level n`.
 * There exists an `a` such that `{(x, y, n) | x ≥ a ∧ y ≥ a} ⊆ R`.
 -/
-def R (n : ℕ) (C : Set Hollom) : Set Hollom := {x ∈ level n | ∀ y ∈ C ∩ level n, x ≤ y ∨ y ≤ x}
+def R (n : ℕ) (C : Set Hollom) : Set Hollom :=
+  {x ∈ level n | ∀ y ∈ C ∩ level n, CompRel (· ≤ ·) x y}
 
 variable {n : ℕ}
 lemma R_subset_level : R n C ⊆ level n := Set.sep_subset (level n) _
@@ -737,9 +739,7 @@ lemma square_subset_above (h : (C ∩ level n).Finite) :
 
 lemma square_subset_R (h : (C ∩ level n).Finite) :
     ∀ᶠ a in atTop, embed n '' Set.Ici (a, a) ⊆ R n C \ (C ∩ level n) := by
-  filter_upwards [square_subset_above h] with a ha
-  rintro _ ⟨⟨x, y⟩, hxy, rfl⟩
-  exact ⟨⟨by simp [embed], fun b hb ↦ .inr ((ha ⟨_, hxy, rfl⟩).1 _ hb)⟩, (ha ⟨_, hxy, rfl⟩).2⟩
+  filter_upwards [square_subset_above h] with a ha using by grind [R, CompRel]
 
 lemma R_diff_infinite (h : (C ∩ level n).Finite) : (R n C \ (C ∩ level n)).Infinite := by
   obtain ⟨a, ha⟩ := (square_subset_R h).exists
@@ -747,9 +747,7 @@ lemma R_diff_infinite (h : (C ∩ level n).Finite) : (R n C \ (C ∩ level n)).I
   grind [Set.InjOn]
 
 lemma not_R_hits_same {x : Hollom} (hx : x ∈ R n C) (hx' : x ∉ C ∩ level n) :
-    f x ∉ C ∩ level n := by
-  intro hfx
-  exact f.incomp_apply (ne_of_mem_of_not_mem hfx hx') (hx.2 _ hfx).symm
+    f x ∉ C ∩ level n := by grind [R]
 
 /--
 Given a subset `C` of the Hollom partial order, and an index `n`, find the smallest element of
@@ -806,7 +804,7 @@ elements of `R` of the form `(a, b, n)` with `max x0 y0 + 1 ≤ min a b`.
 -/
 noncomputable def S (n : ℕ) (C : Set Hollom) : Set Hollom :=
   if (C ∩ level (n + 1)).Finite
-    then {x ∈ R n C | ∀ y ∈ C ∩ level (n + 1), x ≤ y ∨ y ≤ x}
+    then {x ∈ R n C | ∀ y ∈ C ∩ level (n + 1), CompRel (· ≤ ·) x y}
     else {x ∈ R n C | max (x0 n C) (y0 n C) + 1 ≤ min (ofHollom x).1 (ofHollom x).2.1}
 
 lemma S_subset_R : S n C ⊆ R n C := by grind [S]
@@ -821,7 +819,6 @@ We will later show the same assuming `C ∩ level (n + 1)` is infinite.
 lemma square_subset_S_case_1 (h : (C ∩ level n).Finite) (h' : (C ∩ level (n + 1)).Finite) :
     ∀ᶠ a in atTop, embed n '' Set.Ici (a, a) ⊆ S n C \ (C ∩ level n) := by
   rw [S, if_pos h']
-
   -- Take a maximal pair `(b, c)` so that any `(d, e, n)` in `C` satisfies
   -- `(d, e, n) ≤ (b, c, n)`.
   obtain ⟨b, c, hab⟩ : ∃ b c, ∀ d e, h(d, e, n + 1) ∈ C → (d, e) ≤ (b, c) := by
@@ -829,14 +826,14 @@ lemma square_subset_S_case_1 (h : (C ∩ level n).Finite) (h' : (C ∩ level (n 
     use b, c
     intro d e hde
     simpa using hbc ⟨h(_, _, _), ⟨hde, by simp⟩, rfl⟩
-
   -- Using `a ≥ max b c`, we have that all elements of `{(x, y, n) | x ≥ a ∧ y ≥ a}` are comparable
   -- to all elements of `C ∩ level (n + 1)`.
-  have : ∀ᶠ a in atTop, embed n '' .Ici (a, a) ⊆ {x | ∀ y ∈ C ∩ level (n + 1), x ≤ y ∨ y ≤ x} := by
+  have : ∀ᶠ a in atTop,
+      embed n '' .Ici (a, a) ⊆ {x | ∀ y ∈ C ∩ level (n + 1), CompRel (· ≤ ·) x y} := by
     rw [eventually_atTop, level_eq]
     refine ⟨max b c, ?_⟩
     simp only [Set.mem_inter_iff, Set.mem_setOf_eq, Set.subset_def]
-    grind [cases Hollom]
+    grind [cases Hollom, CompRel]
 
   -- Combined with the fact that sufficiently large `a` have
   -- `{(x, y, n) | x ≥ a ∧ y ≥ a} ⊆ R \ (C ∩ level n)`, we can easily finish.
@@ -892,11 +889,7 @@ theorem not_S_hits_next (f : SpinalMap C) (hC : IsChain (· ≤ ·) C)
     f x ∉ C ∩ level (n + 1) := by
   cases (C ∩ level (n + 1)).finite_or_infinite
   -- In the case that `C ∩ level (n + 1)` is finite, this is immediate from the definition of `S`.
-  case inl h =>
-    rw [S, if_pos h, Set.mem_setOf_eq] at hx
-    intro hy
-    refine f.incomp_apply ?_ (hx.2 _ hy).symm
-    grind [level_eq, R_subset_level]
+  case inl h => grind [S, R_subset_level]
   -- So suppose it is infinite
   case inr h =>
     -- Write `(x, y, n)` for our given point, and set `(a, b, n + 1) := f(x, y, n)`
@@ -930,7 +923,7 @@ theorem not_S_hits_next (f : SpinalMap C) (hC : IsChain (· ≤ ·) C)
       grind [le_iff, HollomOrder.next_min]
 
 /-- Every element of `S \ (C ∩ level n)` must be mapped into `C ∩ level (n - 1)`.  -/
-lemma S_mapsTo_previous (f : SpinalMap C) (hC : IsChain (· ≤ ·) C) (hn : n ≠ 0) :
+lemma S_mapsTo_previous (f : SpinalMap C) (hC : IsChain (· ≤ ·) C) :
     ∀ x ∈ S n C \ (C ∩ level n), f x ∈ C ∩ level (n - 1) := by
   -- Clearly it must be mapped into `C`
   intro x hx
@@ -983,13 +976,13 @@ theorem not_S_mapsTo_previous (hC : IsChain (· ≤ ·) C)
   have F_mapsTo : Set.MapsTo f F T := by
     intro x hx
     refine ⟨h _ (F_subs hx), ?_⟩
-    obtain ⟨b, ⟨hab, hba⟩, rfl⟩ : ∃ b, (a ≤ b ∧ b ≤ 3 * a) ∧ h(b, a, n) = x := by grind
-    generalize hc : f h(b, a, n) = c
+    obtain ⟨b, hab, hba, h⟩ : ∃ b, a ≤ b ∧ b ≤ 3 * a ∧ h(b, a, n) = x := by grind
+    generalize hc : f x = c
     have hc' : c ∈ level (n - 1) := by grind
     cases hc' using induction_on_level with | h u v =>
     by_contra!
-    have : f h(u, v, n - 1) = f h(b, a, n) := by grind
-    have le : h(b, a, n) ≤ h(u, v, n - 1) := by cases n <;> grind [le_iff, HollomOrder]
+    have : f h(u, v, n - 1) = f x := by grind
+    have le : x ≤ h(u, v, n - 1) := by cases n <;> grind [le_iff, HollomOrder]
     grind
   -- And `f` acts injectively on `F`, as it is a chain.
   have F_inj : Set.InjOn f F := f.injOn_of_isChain image_chainBetween_isChain
@@ -1007,10 +1000,8 @@ theorem not_S_mapsTo_previous (hC : IsChain (· ≤ ·) C)
 
 /-- The Hollom partial order has no spinal maps. -/
 theorem no_spinalMap (hC : IsChain (· ≤ ·) C) (f : SpinalMap C) : False := by
-  obtain ⟨n, hn, hn'⟩ : ∃ n, n ≠ 0 ∧ (C ∩ Hollom.level n).Finite := by
-    obtain ⟨n, hn, hn'⟩ := Filter.frequently_atTop.1 (Hollom.exists_finite_intersection hC) 1
-    exact ⟨n, by omega, hn'⟩
-  exact Hollom.not_S_mapsTo_previous hC hn' hn (Hollom.S_mapsTo_previous f hC hn)
+  obtain ⟨n, hn, hn'⟩ := Filter.frequently_atTop.1 (Hollom.exists_finite_intersection hC) 1
+  exact Hollom.not_S_mapsTo_previous hC hn' (by omega) (Hollom.S_mapsTo_previous f hC)
 
 end Hollom
 
